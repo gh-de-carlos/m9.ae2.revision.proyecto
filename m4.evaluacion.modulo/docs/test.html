@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Sistema de Gestión de Tareas</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; border-left: 4px solid #28a745; color: #155724; }
+        .error { background-color: #f8d7da; border-left: 4px solid #dc3545; color: #721c24; }
+        .info { background-color: #d1ecf1; border-left: 4px solid #17a2b8; color: #0c5460; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            border: 1px solid #e9ecef;
+        }
+    </style>
+</head>
+<body>
+    <h1>[TEST] Sistema de Gestión de Tareas - Tests</h1>
+    
+    <div class="test-section">
+        <h2>[INFO] Tests Básicos de Funcionalidad</h2>
+        <p>Estos tests verifican que todas las clases y funcionalidades principales estén funcionando correctamente.</p>
+        
+        <button onclick="runAllTests()">[RUN] Ejecutar Todos los Tests</button>
+        <button onclick="clearResults()">[CLEAR] Limpiar Resultados</button>
+        
+        <div id="testResults"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>[UNIT] Tests Individuales</h2>
+        <button onclick="testTareaClass()">Test Clase Tarea</button>
+        <button onclick="testPersistence()">Test Persistencia</button>
+        <button onclick="testApiService()">Test API Service</button>
+        <button onclick="testListaTareas()">Test Lista Tareas</button>
+    </div>
+
+    <div class="test-section">
+        <h2>[NETWORK] Tests de API</h2>
+        <p>Estos tests verifican la conexión con la API de DummyJSON.</p>
+        <button onclick="testApiConnection()">[CONNECT] Test Conexión API</button>
+        <button onclick="testApiEndpoints()">[API] Test Endpoints API</button>
+    </div>
+
+    <div class="test-section">
+        <h2>[STORAGE] Tests de LocalStorage</h2>
+        <button onclick="testLocalStorage()">[DISK] Test LocalStorage</button>
+        <button onclick="showLocalStorageData()">[VIEW] Ver Datos LocalStorage</button>
+        <button onclick="clearLocalStorage()">[DELETE] Limpiar LocalStorage</button>
+    </div>
+
+    <!-- Include all the classes -->
+    <script src="js/models/Tarea.js"></script>
+    <script src="js/persistence/LocalStoragePersistence.js"></script>
+    <script src="js/services/TodoApiService.js"></script>
+    <script src="js/controllers/ListaTareas.js"></script>
+
+    <script>
+        // Test utilities
+        let testResults = document.getElementById('testResults');
+        
+        function addResult(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = message;
+            testResults.appendChild(div);
+        }
+        
+        function clearResults() {
+            testResults.innerHTML = '';
+        }
+
+        // Test de la clase Tarea
+        function testTareaClass() {
+            addResult('<strong>[TEST] Testing Clase Tarea...</strong>', 'info');
+            
+            try {
+                // Test constructor
+                const tarea1 = new Tarea(1, 'Test Tarea', 'Descripción de prueba');
+                addResult('[SUCCESS] Constructor básico funciona', 'success');
+                
+                // Test validación
+                try {
+                    new Tarea(2, '');
+                    addResult('[ERROR] Validación de título debería fallar', 'error');
+                } catch (e) {
+                    addResult('[SUCCESS] Validación de título funciona: ' + e.message, 'success');
+                }
+                
+                // Test métodos
+                tarea1.marcarComoCompletada();
+                if (tarea1.completada === true) {
+                    addResult('[SUCCESS] marcarComoCompletada() funciona', 'success');
+                } else {
+                    addResult('[ERROR] marcarComoCompletada() no funciona', 'error');
+                }
+                
+                // Test toJSON
+                const json = tarea1.toJSON();
+                if (json.id === 1 && json.titulo === 'Test Tarea') {
+                    addResult('[SUCCESS] toJSON() funciona correctamente', 'success');
+                } else {
+                    addResult('[ERROR] toJSON() no funciona correctamente', 'error');
+                }
+                
+                // Test fromJSON
+                const tarea2 = Tarea.fromJSON(json);
+                if (tarea2.titulo === 'Test Tarea') {
+                    addResult('[SUCCESS] fromJSON() funciona correctamente', 'success');
+                } else {
+                    addResult('[ERROR] fromJSON() no funciona correctamente', 'error');
+                }
+                
+                addResult('[SUCCESS] Tests de Clase Tarea completados', 'success');
+                
+            } catch (error) {
+                addResult('[ERROR] Error en tests de Clase Tarea: ' + error.message, 'error');
+            }
+        }
+
+        // Test de persistencia
+        function testPersistence() {
+            addResult('<strong>[TEST] Testing Persistencia LocalStorage...</strong>', 'info');
+            
+            try {
+                const persistence = new LocalStoragePersistence('test_todos');
+                
+                // Test verificación disponibilidad
+                if (LocalStoragePersistence.esLocalStorageDisponible()) {
+                    addResult('[SUCCESS] LocalStorage está disponible', 'success');
+                } else {
+                    addResult('[ERROR] LocalStorage no está disponible', 'error');
+                    return;
+                }
+                
+                // Test guardar y recuperar
+                const testTarea = new Tarea(99, 'Tarea Test', 'Test persistencia');
+                persistence.agregarTarea(testTarea.toJSON());
+                
+                const recuperada = persistence.obtenerTareaPorId(99);
+                if (recuperada && recuperada.titulo === 'Tarea Test') {
+                    addResult('[SUCCESS] Agregar y obtener tarea funciona', 'success');
+                } else {
+                    addResult('[ERROR] Agregar y obtener tarea no funciona', 'error');
+                }
+                
+                // Test estadísticas
+                const stats = persistence.obtenerEstadisticas();
+                if (typeof stats.total === 'number') {
+                    addResult('[SUCCESS] Estadísticas funcionan: ' + JSON.stringify(stats), 'success');
+                } else {
+                    addResult('[ERROR] Estadísticas no funcionan', 'error');
+                }
+                
+                // Limpiar test
+                persistence.eliminarTarea(99);
+                
+                addResult('[SUCCESS] Tests de Persistencia completados', 'success');
+                
+            } catch (error) {
+                addResult('[ERROR] Error en tests de Persistencia: ' + error.message, 'error');
+            }
+        }
+
+        // Test del servicio de API
+        async function testApiService() {
+            addResult('<strong>[TEST] Testing API Service...</strong>', 'info');
+            
+            try {
+                const apiService = new TodoApiService();
+                
+                // Test información de API
+                const apiInfo = apiService.getApiInfo();
+                if (apiInfo.baseUrl && apiInfo.todosEndpoint) {
+                    addResult('[SUCCESS] Información de API correcta: ' + apiInfo.baseUrl, 'success');
+                } else {
+                    addResult('[ERROR] Información de API incorrecta', 'error');
+                }
+                
+                // Test de conexión
+                addResult('[TEST] Probando conexión con API...', 'info');
+                const conexion = await apiService.probarConexion();
+                if (conexion.success) {
+                    addResult('[SUCCESS] Conexión con API exitosa', 'success');
+                    addResult('[INFO] Datos de prueba: ' + JSON.stringify(conexion.data).substring(0, 100) + '...', 'info');
+                } else {
+                    addResult('[WARNING] Conexión con API falló: ' + conexion.error, 'error');
+                }
+                
+                addResult('[SUCCESS] Tests de API Service completados', 'success');
+                
+            } catch (error) {
+                addResult('[ERROR] Error en tests de API Service: ' + error.message, 'error');
+            }
+        }
+
+        // Test de ListaTareas
+        function testListaTareas() {
+            addResult('<strong>[TEST] Testing Lista Tareas...</strong>', 'info');
+            
+            try {
+                const lista = new ListaTareas();
+                
+                // Test inicialización
+                if (lista.persistence && lista.apiService) {
+                    addResult('[SUCCESS] ListaTareas inicializada correctamente', 'success');
+                } else {
+                    addResult('[ERROR] ListaTareas no inicializada correctamente', 'error');
+                }
+                
+                // Test obtener info de debug
+                const debugInfo = lista.obtenerInfoDebug();
+                if (debugInfo && typeof debugInfo.totalTareas === 'number') {
+                    addResult('[SUCCESS] Debug info funciona: ' + debugInfo.totalTareas + ' tareas', 'success');
+                } else {
+                    addResult('[ERROR] Debug info no funciona', 'error');
+                }
+                
+                addResult('[SUCCESS] Tests de Lista Tareas completados', 'success');
+                
+            } catch (error) {
+                addResult('[ERROR] Error en tests de Lista Tareas: ' + error.message, 'error');
+            }
+        }
+
+        // Test conexión API específico
+        async function testApiConnection() {
+            addResult('<strong>[TEST] Testing Conexión API Detallada...</strong>', 'info');
+            
+            try {
+                const apiService = new TodoApiService();
+                
+                // Test obtener tarea específica
+                addResult('[LOADING] Obteniendo tarea #1...', 'info');
+                const tarea1 = await apiService.obtenerTareaPorId(1);
+                if (tarea1 && tarea1.id === 1) {
+                    addResult('[SUCCESS] GET /todos/1 funciona: ' + tarea1.todo, 'success');
+                } else {
+                    addResult('[ERROR] GET /todos/1 no funciona', 'error');
+                }
+                
+                // Test obtener tareas con límite
+                addResult('[LOADING] Obteniendo 5 tareas...', 'info');
+                const tareas = await apiService.obtenerTodasLasTareas(5, 0);
+                if (tareas && tareas.todos && tareas.todos.length > 0) {
+                    addResult(`[SUCCESS] GET /todos?limit=5 funciona: ${tareas.todos.length} tareas recibidas`, 'success');
+                } else {
+                    addResult('[ERROR] GET /todos?limit=5 no funciona', 'error');
+                }
+                
+            } catch (error) {
+                addResult('[ERROR] Error en conexión API: ' + error.message, 'error');
+            }
+        }
+
+        // Test endpoints específicos
+        async function testApiEndpoints() {
+            addResult('<strong>[TEST] Testing Endpoints API...</strong>', 'info');
+            
+            try {
+                const apiService = new TodoApiService();
+                
+                // Test POST
+                addResult('[POST] Testing POST /todos/add...', 'info');
+                const nuevaTarea = await apiService.agregarTarea({
+                    titulo: 'Test desde página de pruebas',
+                    completada: false,
+                    userId: 1
+                });
+                
+                if (nuevaTarea && nuevaTarea.id) {
+                    addResult(`[SUCCESS] POST funciona - Nueva tarea ID: ${nuevaTarea.id}`, 'success');
+                    
+                    // Test PUT
+                    addResult('[PUT] Testing PUT /todos/' + nuevaTarea.id + '...', 'info');
+                    const tareaActualizada = await apiService.actualizarTarea(nuevaTarea.id, {
+                        completada: true
+                    });
+                    
+                    if (tareaActualizada) {
+                        addResult('[SUCCESS] PUT funciona - Tarea actualizada', 'success');
+                    }
+                    
+                    // Test DELETE
+                    addResult('[DELETE] Testing DELETE /todos/' + nuevaTarea.id + '...', 'info');
+                    const tareaEliminada = await apiService.eliminarTarea(nuevaTarea.id);
+                    
+                    if (tareaEliminada) {
+                        addResult('[SUCCESS] DELETE funciona - Tarea eliminada', 'success');
+                    }
+                } else {
+                    addResult('[ERROR] POST no funciona', 'error');
+                }
+                
+            } catch (error) {
+                addResult('[ERROR] Error en tests de endpoints: ' + error.message, 'error');
+            }
+        }
+
+        // Test LocalStorage
+        function testLocalStorage() {
+            addResult('<strong>[TEST] Testing LocalStorage...</strong>', 'info');
+            
+            try {
+                const persistence = new LocalStoragePersistence('test_localstorage');
+                
+                // Limpiar datos previos
+                persistence.limpiarTodasLasTareas();
+                
+                // Test agregar múltiples tareas
+                const tareas = [
+                    new Tarea(1, 'Tarea 1', 'Primera tarea'),
+                    new Tarea(2, 'Tarea 2', 'Segunda tarea'),
+                    new Tarea(3, 'Tarea 3', 'Tercera tarea')
+                ];
+                
+                tareas.forEach(t => persistence.agregarTarea(t.toJSON()));
+                
+                // Verificar que se guardaron
+                const todasLasTareas = persistence.obtenerTodasLasTareas();
+                if (todasLasTareas.length === 3) {
+                    addResult('[SUCCESS] Múltiples tareas guardadas correctamente', 'success');
+                } else {
+                    addResult(`[ERROR] Error al guardar tareas. Esperadas: 3, Encontradas: ${todasLasTareas.length}`, 'error');
+                }
+                
+                // Test filtros
+                tareas[0].marcarComoCompletada();
+                persistence.actualizarTarea(tareas[0].toJSON());
+                
+                const completadas = persistence.obtenerTareasPorEstado(true);
+                if (completadas.length === 1) {
+                    addResult('[SUCCESS] Filtro por estado funciona', 'success');
+                } else {
+                    addResult('[ERROR] Filtro por estado no funciona', 'error');
+                }
+                
+                // Test info de almacenamiento
+                const info = persistence.obtenerInfoAlmacenamiento();
+                if (info && info.cantidadTareas === 3) {
+                    addResult('[SUCCESS] Info de almacenamiento correcta: ' + info.tamañoLegible, 'success');
+                } else {
+                    addResult('[ERROR] Info de almacenamiento incorrecta', 'error');
+                }
+                
+                // Limpiar tests
+                persistence.limpiarTodasLasTareas();
+                
+            } catch (error) {
+                addResult('[ERROR] Error en tests de LocalStorage: ' + error.message, 'error');
+            }
+        }
+
+        // Mostrar datos de LocalStorage
+        function showLocalStorageData() {
+            addResult('<strong>[INFO] Datos en LocalStorage...</strong>', 'info');
+            
+            try {
+                const persistence = new LocalStoragePersistence('lucifertodos');
+                const tareas = persistence.obtenerTodasLasTareas();
+                const info = persistence.obtenerInfoAlmacenamiento();
+                
+                addResult(`[STATS] Tareas almacenadas: ${tareas.length}`, 'info');
+                addResult(`[SIZE] Tamaño: ${info ? info.tamañoLegible : 'N/A'}`, 'info');
+                
+                if (tareas.length > 0) {
+                    const preview = tareas.slice(0, 3).map(t => 
+                        `• ${t.titulo || t.todo} (${(t.completada || t.completed) ? 'Completada' : 'Pendiente'})`
+                    ).join('<br>');
+                    
+                    addResult(`<strong>Vista previa:</strong><br>${preview}${tareas.length > 3 ? '<br>...' : ''}`, 'info');
+                }
+                
+            } catch (error) {
+                addResult('[ERROR] Error al leer LocalStorage: ' + error.message, 'error');
+            }
+        }
+
+        // Limpiar LocalStorage
+        function clearLocalStorage() {
+            if (confirm('¿Estás seguro de que quieres limpiar todos los datos de LocalStorage?')) {
+                const persistence = new LocalStoragePersistence('lucifertodos');
+                persistence.limpiarTodasLasTareas();
+                addResult('[CLEANUP] LocalStorage limpiado correctamente', 'success');
+            }
+        }
+
+        // Ejecutar todos los tests
+        async function runAllTests() {
+            clearResults();
+            addResult('<h3>[RUN] Ejecutando Suite Completa de Tests...</h3>', 'info');
+            
+            testTareaClass();
+            testPersistence();
+            testListaTareas();
+            
+            await testApiService();
+            await testApiConnection();
+            
+            testLocalStorage();
+            
+            addResult('<h3>[SUCCESS] Suite de Tests Completada</h3>', 'success');
+        }
+        
+        // Auto-ejecutar tests básicos al cargar
+        window.addEventListener('load', () => {
+            addResult('[READY] Página de tests cargada. Haz clic en los botones para ejecutar pruebas.', 'info');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+# Sistema Operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDEs y Editores
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporal
+*.tmp
+*.bak
+*.cache
+
+# Node (si se agrega en el futuro)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Build (si se agrega proceso de build)
+dist/
+build/
