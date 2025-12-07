@@ -41,3 +41,5 @@ Cada estudiante realizará una revisión exhaustiva de su proyecto desarrollado 
   - Una descripción final del producto.
   - Las mejoras aplicadas tras la revisión.
   - Una reflexión personal sobre tu experiencia en el desarrollo del proyecto.
+
+Puedes leer la review de Sebastián [acá](./REVIEW.md).
